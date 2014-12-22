@@ -1,0 +1,6 @@
+Diffrential Private Proc Filesystem
+
+Target:
+1. Add field in thread_info struct. Allocate memory in kernel space for random buffer(kfifo). 
+2. Modify the Proc Filesystem to implement the binary tree based DP mechanism.
+3. Implement a kernel thread to replete random buffer.
