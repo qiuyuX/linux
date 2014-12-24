@@ -55,6 +55,7 @@ struct sched_param {
 #include <linux/gfp.h>
 
 #include <asm/processor.h>
+#include <linux/types_privfs.h>//x_x
 
 struct exec_domain;
 struct futex_pi_state;
@@ -1454,6 +1455,10 @@ struct task_struct {
 	unsigned int	sequential_io;
 	unsigned int	sequential_io_avg;
 #endif
+	/*
+	 * data related with privfs.x_x
+	 */
+	struct drs_pri task_pri;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */

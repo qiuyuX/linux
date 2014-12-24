@@ -71,6 +71,7 @@
 #include <linux/signalfd.h>
 #include <linux/uprobes.h>
 #include <linux/aio.h>
+#include <linux/types_privfs.h>//x_x
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -1247,6 +1248,8 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 #if defined(SPLIT_RSS_COUNTING)
 	memset(&p->rss_stat, 0, sizeof(p->rss_stat));
 #endif
+	//for privfs. x_x
+	initialize_pri(p);
 
 	p->default_timer_slack_ns = current->timer_slack_ns;
 
@@ -1425,6 +1428,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		p->parent_exec_id = current->parent_exec_id;
 	} else {
 		p->real_parent = current;
+
 		p->parent_exec_id = current->self_exec_id;
 	}
 

@@ -53,6 +53,7 @@
 #include <linux/oom.h>
 #include <linux/writeback.h>
 #include <linux/shm.h>
+#include <linux/types_privfs.h>/*x_x*/
 
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
@@ -179,6 +180,7 @@ repeat:
 	rcu_read_unlock();
 
 	proc_flush_task(p);
+	release_pri(p);//for privfs. x_x
 
 	write_lock_irq(&tasklist_lock);
 	ptrace_release_task(p);
