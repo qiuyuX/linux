@@ -82,6 +82,7 @@
 #include <linux/ptrace.h>
 #include <linux/tracehook.h>
 #include <linux/user_namespace.h>
+#include <linux/types_privfs.h> //x_x
 
 #include <asm/pgtable.h>
 #include <asm/processor.h>
@@ -576,12 +577,14 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
+	long noised_value;
 	struct mm_struct *mm = get_task_mm(task);
 
 	if (mm) {
 		size = task_statm(mm, &shared, &text, &data, &resident);
 		mmput(mm);
 	}
+	noised_value = get_obfuscation(task, resident); /* x_x */
 	/*
 	 * For quick read, open code by putting numbers directly
 	 * expected format is
@@ -590,6 +593,7 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	 */
 	seq_put_decimal_ull(m, 0, size);
 	seq_put_decimal_ull(m, ' ', resident);
+	seq_put_decimal_ll(m, ' ', noised_value); //x_x
 	seq_put_decimal_ull(m, ' ', shared);
 	seq_put_decimal_ull(m, ' ', text);
 	seq_put_decimal_ull(m, ' ', 0);

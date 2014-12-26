@@ -9,7 +9,6 @@
 #include <linux/kfifo.h>
 #include <linux/gfp.h>
 #include <linux/string.h>
-#include <linux/kfifo.h>
 
 #define MAX_QUERY_LENGTH 16  
 #define BUFFER_SIZE 64
@@ -17,8 +16,10 @@
 struct task_struct;
 
 struct drs_pri { // for drs field in statm
-	unsigned long original[MAX_QUERY_LENGTH]; // original value
-	unsigned long obfuscated[MAX_QUERY_LENGTH]; // obfuscated value 
+	long original[MAX_QUERY_LENGTH]; // original value
+	long obfuscated[MAX_QUERY_LENGTH]; // obfuscated value 
+	unsigned int index; // the ith query
+	long pri_current; // previous value
 	struct __kfifo *rbuffer;
 };
 
@@ -35,4 +36,6 @@ static inline void rbuffer_free(struct drs_pri *dpri)
 extern void initialize_pri(struct task_struct *task);
 
 extern void release_pri(struct task_struct *task);
+
+extern long get_obfuscation(struct task_struct *task, long original);
 #endif
