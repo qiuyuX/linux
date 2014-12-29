@@ -1,6 +1,10 @@
 #include <linux/sched.h>
 #include <linux/types_privfs.h>
 
+//static long random_buf[BUFFERSIZE] = {
+	
+//};
+
 void initialize_pri(struct task_struct *task)
 {
 	long tmp = 1;
@@ -13,7 +17,7 @@ void initialize_pri(struct task_struct *task)
 	memset(p->original, 0, MAX_QUERY_LENGTH * 4);
 	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 4);
        	for(i = 0; i < BUFFER_SIZE; i++){
-		__kfifo_in(p->rbuffer, &tmp, 1);	
+		__kfifo_in(&(p->rbuffer), &tmp, 1);	
 	}//for test	
 }
 
@@ -37,7 +41,7 @@ static inline void refresh_original(struct drs_pri *pri, int index, long ori)
 static long get_noise(struct drs_pri *pri)
 {
 	long noise;
-	if(__kfifo_out(pri->rbuffer, &noise, 1) != 0){
+	if(__kfifo_out(&(pri->rbuffer), &noise, 1) != 0){
 		return noise;
 	}
 	else return 0;

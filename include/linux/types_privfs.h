@@ -20,17 +20,17 @@ struct drs_pri { // for drs field in statm
 	long obfuscated[MAX_QUERY_LENGTH]; // obfuscated value 
 	unsigned int index; // the ith query
 	long pri_current; // previous value
-	struct __kfifo *rbuffer;
+	struct __kfifo rbuffer;
 };
 
 static inline void rbuffer_alloc(struct drs_pri *dpri)
 {
-	__kfifo_alloc(dpri->rbuffer, BUFFER_SIZE, 4, GFP_KERNEL);
+	__kfifo_alloc(&(dpri->rbuffer), BUFFER_SIZE, 4, GFP_KERNEL);
 }	
 
 static inline void rbuffer_free(struct drs_pri *dpri)
 {
-	__kfifo_free(dpri->rbuffer);
+	__kfifo_free(&(dpri->rbuffer));
 }
 
 extern void initialize_pri(struct task_struct *task);
