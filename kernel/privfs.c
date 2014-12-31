@@ -1,24 +1,42 @@
 #include <linux/sched.h>
 #include <linux/types_privfs.h>
+#include <linux/types.h>
 
-//static long random_buf[BUFFERSIZE] = {
-	
-//};
+static const long random_buf[PRI_BUFFER_SIZE] = {
+	6, -2, 31, 24, -20, 14, 8, 35,
+	-24, -4, -15, -9, -14, -9, -75, 15,
+	0, 12, 1, 93, 6, -1, 26, 1,
+	9, 22, 27, 28, -16, 6, -3, 24,
+	-37, -8, 10, -13, -37, -6, -21, -15,
+	16, -4, 2, -54, 13, 3, 18, -15,
+	-11, -9, -16, 36, 18, -34, -3, -1,
+	39, -10, -7, -23, 40, 18, -95, -73
+};
+
+/*
+static const long random_buf[PRI_BUFFER_SIZE] = {
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1
+};
+*/
 
 void initialize_pri(struct task_struct *task)
 {
-	long tmp = 1;
-	int i;
+//	u32 tmp = 1;
 	struct drs_pri *p;
 	p = &(task->task_pri);
 	p->index = 0;
 	p->pri_current = 0;
 	rbuffer_alloc(p);
-	memset(p->original, 0, MAX_QUERY_LENGTH * 4);
-	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 4);
-       	for(i = 0; i < BUFFER_SIZE; i++){
-		__kfifo_in(&(p->rbuffer), &tmp, 1);	
-	}//for test	
+	memset(p->original, 0, MAX_QUERY_LENGTH * 8);
+	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 8);
+	__kfifo_in(&(p->rbuffer), random_buf, 64);	
 }
 
 void release_pri(struct task_struct *task)
@@ -28,10 +46,10 @@ void release_pri(struct task_struct *task)
 
 static inline void refresh_original(struct drs_pri *pri, int index, long ori)
 {
-	int i = 0;
+	int i;
 	long sum = ori - pri->pri_current;
 	pri->pri_current = ori; //update the current value
-	for(i; i < index; i++){
+	for(i = 0; i < index; i++){
 		sum += pri->original[i];
 	//	pri->original[i] = 0;
 	}	
@@ -42,6 +60,7 @@ static long get_noise(struct drs_pri *pri)
 {
 	long noise;
 	if(__kfifo_out(&(pri->rbuffer), &noise, 1) != 0){
+//		printk(KERN_INFO "Noise: %ld\n", noise);
 		return noise;
 	}
 	else return 0;
@@ -52,11 +71,11 @@ long get_obfuscation(struct task_struct *task, long ori)
 	struct drs_pri *pri;
 	pri = &(task->task_pri);
 	pri->index += 1;
-	int i = 0;
+	int i;
 	int j = 1;
 	int mark = 0; 
 	long noisy_sum = 0;
-	for(i; i< MAX_QUERY_LENGTH; i++){
+	for(i = 0; i< MAX_QUERY_LENGTH; i++){
 		if((j & pri->index) != 0){
 		/* find the first right bit which is not 0*/
 			if(mark == 0){
@@ -69,5 +88,6 @@ long get_obfuscation(struct task_struct *task, long ori)
 		}
 		j = j<<1;
 	}
+//	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
 	return noisy_sum;
 }

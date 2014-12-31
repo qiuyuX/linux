@@ -584,7 +584,8 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 		size = task_statm(mm, &shared, &text, &data, &resident);
 		mmput(mm);
 	}
-	noised_value = get_obfuscation(task, resident); /* x_x */
+	noised_value = get_obfuscation(task, data); /* x_x */
+//	printk(KERN_INFO "proc_pid_statm\n");
 	/*
 	 * For quick read, open code by putting numbers directly
 	 * expected format is
@@ -593,11 +594,11 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	 */
 	seq_put_decimal_ull(m, 0, size);
 	seq_put_decimal_ull(m, ' ', resident);
-	seq_put_decimal_ll(m, ' ', noised_value); //x_x
 	seq_put_decimal_ull(m, ' ', shared);
 	seq_put_decimal_ull(m, ' ', text);
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_put_decimal_ull(m, ' ', data);
+	seq_put_decimal_ll(m, ' ', noised_value); //x_x
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_putc(m, '\n');
 

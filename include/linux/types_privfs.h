@@ -11,7 +11,7 @@
 #include <linux/string.h>
 
 #define MAX_QUERY_LENGTH 16  
-#define BUFFER_SIZE 64
+#define PRI_BUFFER_SIZE 64
 
 struct task_struct;
 
@@ -25,7 +25,7 @@ struct drs_pri { // for drs field in statm
 
 static inline void rbuffer_alloc(struct drs_pri *dpri)
 {
-	__kfifo_alloc(&(dpri->rbuffer), BUFFER_SIZE, 4, GFP_KERNEL);
+	__kfifo_alloc(&(dpri->rbuffer), PRI_BUFFER_SIZE, 8, GFP_KERNEL);
 }	
 
 static inline void rbuffer_free(struct drs_pri *dpri)

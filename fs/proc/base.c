@@ -87,6 +87,7 @@
 #include <linux/slab.h>
 #include <linux/flex_array.h>
 #include <linux/posix-timers.h>
+#include <linux/kernel.h>//x_x
 #ifdef CONFIG_HARDWALL
 #include <asm/hardwall.h>
 #endif
@@ -680,7 +681,7 @@ static int proc_single_show(struct seq_file *m, void *v)
 	task = get_pid_task(pid, PIDTYPE_PID);
 	if (!task)
 		return -ESRCH;
-
+//	printk(KERN_INFO "proc_single_show");//x_x
 	ret = PROC_I(inode)->op.proc_show(m, ns, pid, task);
 
 	put_task_struct(task);
@@ -689,6 +690,7 @@ static int proc_single_show(struct seq_file *m, void *v)
 
 static int proc_single_open(struct inode *inode, struct file *filp)
 {
+//	printk(KERN_INFO "proc_single_open");//x_x
 	return single_open(filp, proc_single_show, inode);
 }
 
