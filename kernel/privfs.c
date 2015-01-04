@@ -26,6 +26,11 @@ static const long random_buf[PRI_BUFFER_SIZE] = {
 };
 */
 
+void drs_refill(unsigned long pid)
+{
+	printk(KERN_INFO "Refill random buffer for %lu\n", pid);
+}
+
 void initialize_pri(struct task_struct *task)
 {
 //	u32 tmp = 1;
@@ -37,6 +42,8 @@ void initialize_pri(struct task_struct *task)
 	memset(p->original, 0, MAX_QUERY_LENGTH * 8);
 	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 8);
 	__kfifo_in(&(p->rbuffer), random_buf, 64);	
+	p->drs_task = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
+	tasklet_init(p->drs_task, drs_refill, task->pid);
 }
 
 void release_pri(struct task_struct *task)
@@ -59,11 +66,19 @@ static inline void refresh_original(struct drs_pri *pri, int index, long ori)
 static long get_noise(struct drs_pri *pri)
 {
 	long noise;
+	int length;
 	if(__kfifo_out(&(pri->rbuffer), &noise, 1) != 0){
 //		printk(KERN_INFO "Noise: %ld\n", noise);
+		length = (pri->rbuffer).in - (pri->rbuffer).out;
+		if(length == (PRI_BUFFER_SIZE/2)){
+			tasklet_hi_schedule(pri->drs_task);
+		}
 		return noise;
 	}
-	else return 0;
+	else{
+		printk(KERN_INFO "Random Buffer is empty!\n");
+		return 0;
+	}
 }
 
 long get_obfuscation(struct task_struct *task, long ori)
@@ -88,6 +103,6 @@ long get_obfuscation(struct task_struct *task, long ori)
 		}
 		j = j<<1;
 	}
-//	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
+	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
 	return noisy_sum;
 }

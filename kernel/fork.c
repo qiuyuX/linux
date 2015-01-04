@@ -1249,7 +1249,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	memset(&p->rss_stat, 0, sizeof(p->rss_stat));
 #endif
 	//for privfs. x_x
-	initialize_pri(p);
+//	initialize_pri(p);
 
 	p->default_timer_slack_ns = current->timer_slack_ns;
 
@@ -1492,6 +1492,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 
 	trace_task_newtask(p, clone_flags);
 	uprobe_copy_process(p, clone_flags);
+	initialize_pri(p);/*x_x*/
 
 	return p;
 

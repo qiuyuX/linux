@@ -9,6 +9,8 @@
 #include <linux/kfifo.h>
 #include <linux/gfp.h>
 #include <linux/string.h>
+#include <linux/interrupt.h>
+#include <linux/slab.h>
 
 #define MAX_QUERY_LENGTH 16  
 #define PRI_BUFFER_SIZE 64
@@ -21,6 +23,7 @@ struct drs_pri { // for drs field in statm
 	unsigned int index; // the ith query
 	long pri_current; // previous value
 	struct __kfifo rbuffer;
+	struct tasklet_struct *drs_task;
 };
 
 static inline void rbuffer_alloc(struct drs_pri *dpri)
@@ -31,6 +34,7 @@ static inline void rbuffer_alloc(struct drs_pri *dpri)
 static inline void rbuffer_free(struct drs_pri *dpri)
 {
 	__kfifo_free(&(dpri->rbuffer));
+	kfree(dpri->drs_task);
 }
 
 extern void initialize_pri(struct task_struct *task);
