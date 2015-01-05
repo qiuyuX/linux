@@ -1,6 +1,8 @@
 #
 # Makefile for the linux kernel.
 #
+CFLAGS_laplace_pri.o += -msse -mpreferred-stack-boundary=4
+CFLAGS_privfs.o += -msse -mpreferred-stack-boundary=4
 
 obj-y     = fork.o exec_domain.o panic.o \
 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
@@ -10,7 +12,7 @@ obj-y     = fork.o exec_domain.o panic.o \
 	    kthread.o sys_ni.o posix-cpu-timers.o \
 	    hrtimer.o nsproxy.o \
 	    notifier.o ksysfs.o cred.o reboot.o \
-	    async.o range.o groups.o smpboot.o privfs.o
+	    async.o range.o groups.o smpboot.o privfs.o laplace_pri.o
 
 ifdef CONFIG_FUNCTION_TRACER
 # Do not trace debug files and internal ftrace files

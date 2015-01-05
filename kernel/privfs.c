@@ -1,6 +1,10 @@
 #include <linux/sched.h>
 #include <linux/types_privfs.h>
 #include <linux/types.h>
+#include <linux/laplace_pri.h>
+#include <linux/pid.h>
+
+#define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 
 static const long random_buf[PRI_BUFFER_SIZE] = {
 	6, -2, 31, 24, -20, 14, 8, 35,
@@ -26,9 +30,26 @@ static const long random_buf[PRI_BUFFER_SIZE] = {
 };
 */
 
+static long get_laplace(float u, float b){
+	float noise = get_fast_laplace(u, b);
+	return round(noise);
+}
+
 void drs_refill(unsigned long pid)
 {
+	struct task_struct *task;
+	struct drs_pri *pri;
+	struct __kfifo *buf;
+	long noise;
 	printk(KERN_INFO "Refill random buffer for %lu\n", pid);
+	task = pid_task(find_vpid(pid), PIDTYPE_PID);
+	pri = &(task->task_pri);
+	buf = &(pri->rbuffer);
+	while((buf->in - buf->out) < PRI_BUFFER_SIZE){
+		noise = get_laplace(0, 20);
+		__kfifo_in(buf, &noise, 1);
+		printk(KERN_INFO "Generated Noise: %ld\n", noise);
+	}	
 }
 
 void initialize_pri(struct task_struct *task)
@@ -68,7 +89,6 @@ static long get_noise(struct drs_pri *pri)
 	long noise;
 	int length;
 	if(__kfifo_out(&(pri->rbuffer), &noise, 1) != 0){
-//		printk(KERN_INFO "Noise: %ld\n", noise);
 		length = (pri->rbuffer).in - (pri->rbuffer).out;
 		if(length == (PRI_BUFFER_SIZE/2)){
 			tasklet_hi_schedule(pri->drs_task);
