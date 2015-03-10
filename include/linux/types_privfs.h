@@ -15,31 +15,33 @@
 #define MAX_QUERY_LENGTH 16  
 #define PRI_BUFFER_SIZE 64
 
+#define PRI_SIZE 4
+//fields in statm
+#define SIZE 0
+#define RESIDENT 1
+#define SHARED 2
+#define DRS 3
+
 struct task_struct;
 
-struct drs_pri { // for drs field in statm
+struct pri_rbuff{ // store the random laplace noise
+	struct __kfifo rbuff;
+	struct tasklet_struct *buff_task;	
+};
+
+struct pri_struct{ // for drs field in statm
 	long original[MAX_QUERY_LENGTH]; // original value
 	long obfuscated[MAX_QUERY_LENGTH]; // obfuscated value 
 	unsigned int index; // the ith query
 	long pri_current; // previous value
-	struct __kfifo rbuffer;
-	struct tasklet_struct *drs_task;
+	struct pri_rbuff *p_rbuff;
 };
-
-static inline void rbuffer_alloc(struct drs_pri *dpri)
-{
-	__kfifo_alloc(&(dpri->rbuffer), PRI_BUFFER_SIZE, 8, GFP_KERNEL);
-}	
-
-static inline void rbuffer_free(struct drs_pri *dpri)
-{
-	__kfifo_free(&(dpri->rbuffer));
-	kfree(dpri->drs_task);
-}
 
 extern void initialize_pri(struct task_struct *task);
 
 extern void release_pri(struct task_struct *task);
 
-extern long get_obfuscation(struct task_struct *task, long original);
+extern long get_obfuscation(struct task_struct *task, int type, long original);
+
+extern long pri_task_statm(struct task_struct *task, struct mm_struct *mm, long *pri_shared, long *pri_text, long *pri_data, long *pri_resident);
 #endif

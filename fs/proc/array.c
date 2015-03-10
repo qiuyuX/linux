@@ -577,14 +577,14 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
-	long noised_value;
+	long pri_size = 0, pri_shared = 0, pri_text = 0, pri_data = 0, pri_resident = 0; 
 	struct mm_struct *mm = get_task_mm(task);
 
 	if (mm) {
 		size = task_statm(mm, &shared, &text, &data, &resident);
+		pri_size = pri_task_statm(task, mm, &pri_shared, &pri_text, &pri_data, &pri_resident); //x_x
 		mmput(mm);
 	}
-	noised_value = get_obfuscation(task, data); /* x_x */
 //	printk(KERN_INFO "proc_pid_statm\n");
 	/*
 	 * For quick read, open code by putting numbers directly
@@ -598,10 +598,17 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', text);
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_put_decimal_ull(m, ' ', data);
-	seq_put_decimal_ll(m, ' ', noised_value); //x_x
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_putc(m, '\n');
 
+	seq_put_decimal_ll(m, 0, pri_size);
+	seq_put_decimal_ll(m, ' ', pri_resident);
+	seq_put_decimal_ll(m, ' ', pri_shared);
+	seq_put_decimal_ll(m, ' ', pri_text);
+	seq_put_decimal_ll(m, ' ', 0);
+	seq_put_decimal_ll(m, ' ', pri_data);
+	seq_put_decimal_ll(m, ' ', 0);
+	seq_putc(m, '\n');
 	return 0;
 }
 

@@ -35,16 +35,14 @@ static long get_laplace(float u, float b){
 	return round(noise);
 }
 
-void drs_refill(unsigned long pid)
+void buff_refill(unsigned long pid)
 {
 	struct task_struct *task;
-	struct drs_pri *pri;
 	struct __kfifo *buf;
 	long noise;
 	printk(KERN_INFO "Refill random buffer for %lu\n", pid);
 	task = pid_task(find_vpid(pid), PIDTYPE_PID);
-	pri = &(task->task_pri);
-	buf = &(pri->rbuffer);
+	buf = &((task->rbuff).rbuff);
 	while((buf->in - buf->out) < PRI_BUFFER_SIZE){
 		noise = get_laplace(0, 20);
 		__kfifo_in(buf, &noise, 1);
@@ -52,27 +50,47 @@ void drs_refill(unsigned long pid)
 	}	
 }
 
+static inline void rbuffer_alloc(struct task_struct *task)
+{
+	struct pri_rbuff *buff = &(task->rbuff);
+	__kfifo_alloc(&(buff->rbuff), PRI_BUFFER_SIZE, 8, GFP_KERNEL);
+	__kfifo_in(&(buff->rbuff), random_buf, 64);	
+	buff->buff_task = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
+	tasklet_init(buff->buff_task, buff_refill, task->pid);
+}	
+
+static inline void rbuffer_free(struct task_struct *task)
+{
+	struct pri_rbuff *buff = &(task->rbuff);
+	__kfifo_free(&(buff->rbuff));
+	kfree(buff->buff_task);
+}
+
+static void init_pri_struct(struct task_struct *task, int type){
+	struct pri_struct *p = &(task->pri[type]);	
+	p->index = 0;
+	p->pri_current = 0;
+	memset(p->original, 0, MAX_QUERY_LENGTH * 8);
+	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 8);
+	p->p_rbuff = &(task->rbuff);
+}
+
 void initialize_pri(struct task_struct *task)
 {
 //	u32 tmp = 1;
-	struct drs_pri *p;
-	p = &(task->task_pri);
-	p->index = 0;
-	p->pri_current = 0;
-	rbuffer_alloc(p);
-	memset(p->original, 0, MAX_QUERY_LENGTH * 8);
-	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 8);
-	__kfifo_in(&(p->rbuffer), random_buf, 64);	
-	p->drs_task = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
-	tasklet_init(p->drs_task, drs_refill, task->pid);
+	int i;
+	rbuffer_alloc(task);
+	for(i = 0; i < PRI_SIZE; i++){
+		init_pri_struct(task, i);
+	}
 }
 
 void release_pri(struct task_struct *task)
 {
-	rbuffer_free(&(task->task_pri));
+	rbuffer_free(task);
 }
 
-static inline void refresh_original(struct drs_pri *pri, int index, long ori)
+static inline void refresh_original(struct pri_struct *pri, int index, long ori)
 {
 	int i;
 	long sum = ori - pri->pri_current;
@@ -84,14 +102,15 @@ static inline void refresh_original(struct drs_pri *pri, int index, long ori)
 	pri->original[index] = sum;
 }
 
-static long get_noise(struct drs_pri *pri)
+static long get_noise(struct pri_struct *pri)
 {
 	long noise;
 	int length;
-	if(__kfifo_out(&(pri->rbuffer), &noise, 1) != 0){
-		length = (pri->rbuffer).in - (pri->rbuffer).out;
+	struct pri_rbuff *p_rbuff = pri->p_rbuff;
+	if(__kfifo_out(&(p_rbuff->rbuff), &noise, 1) != 0){
+		length = (p_rbuff->rbuff).in - (p_rbuff->rbuff).out;
 		if(length == (PRI_BUFFER_SIZE/2)){
-			tasklet_hi_schedule(pri->drs_task);
+			tasklet_hi_schedule(p_rbuff->buff_task);
 		}
 		return noise;
 	}
@@ -101,10 +120,10 @@ static long get_noise(struct drs_pri *pri)
 	}
 }
 
-long get_obfuscation(struct task_struct *task, long ori)
+long get_obfuscation(struct task_struct *task, int type, long ori)
 {
-	struct drs_pri *pri;
-	pri = &(task->task_pri);
+	struct pri_struct *pri;
+	pri = &(task->pri[type]);
 	pri->index += 1;
 	int i;
 	int j = 1;
