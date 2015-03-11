@@ -142,6 +142,6 @@ long get_obfuscation(struct task_struct *task, int type, long ori)
 		}
 		j = j<<1;
 	}
-	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
+//	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
 	return noisy_sum;
 }

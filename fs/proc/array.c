@@ -82,7 +82,7 @@
 #include <linux/ptrace.h>
 #include <linux/tracehook.h>
 #include <linux/user_namespace.h>
-#include <linux/types_privfs.h> //x_x
+#include <linux/privfs_comm.h> //x_x
 
 #include <asm/pgtable.h>
 #include <asm/processor.h>
@@ -577,12 +577,14 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
+	long noisy[5]; // size, resident, shared, text, data
+	long opt[5];
 	long pri_size = 0, pri_shared = 0, pri_text = 0, pri_data = 0, pri_resident = 0; 
 	struct mm_struct *mm = get_task_mm(task);
 
 	if (mm) {
 		size = task_statm(mm, &shared, &text, &data, &resident);
-		pri_size = pri_task_statm(task, mm, &pri_shared, &pri_text, &pri_data, &pri_resident); //x_x
+		pri_task_statm(task, mm, noisy, opt); //x_x
 		mmput(mm);
 	}
 //	printk(KERN_INFO "proc_pid_statm\n");
@@ -601,14 +603,26 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_putc(m, '\n');
 
-	seq_put_decimal_ll(m, 0, pri_size);
-	seq_put_decimal_ll(m, ' ', pri_resident);
-	seq_put_decimal_ll(m, ' ', pri_shared);
-	seq_put_decimal_ll(m, ' ', pri_text);
+	//noisy
+	seq_put_decimal_ll(m, 0, noisy[0]);
+	seq_put_decimal_ll(m, ' ', noisy[1]);
+	seq_put_decimal_ll(m, ' ', noisy[2]);
+	seq_put_decimal_ll(m, ' ', noisy[3]);
 	seq_put_decimal_ll(m, ' ', 0);
-	seq_put_decimal_ll(m, ' ', pri_data);
+	seq_put_decimal_ll(m, ' ', noisy[4]);
 	seq_put_decimal_ll(m, ' ', 0);
 	seq_putc(m, '\n');
+
+	//optimal
+	seq_put_decimal_ll(m, 0, opt[0]);
+	seq_put_decimal_ll(m, ' ', opt[1]);
+	seq_put_decimal_ll(m, ' ', opt[2]);
+	seq_put_decimal_ll(m, ' ', opt[3]);
+	seq_put_decimal_ll(m, ' ', 0);
+	seq_put_decimal_ll(m, ' ', opt[4]);
+	seq_put_decimal_ll(m, ' ', 0);
+	seq_putc(m, '\n');
+	
 	return 0;
 }
 

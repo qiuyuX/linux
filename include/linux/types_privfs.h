@@ -17,10 +17,10 @@
 
 #define PRI_SIZE 4
 //fields in statm
-#define SIZE 0
-#define RESIDENT 1
-#define SHARED 2
-#define DRS 3
+#define STATM_FILE 0
+#define STATM_ANON 1
+#define STATM_TOTAL 2
+#define STATM_SHARED 3
 
 struct task_struct;
 
@@ -42,6 +42,4 @@ extern void initialize_pri(struct task_struct *task);
 extern void release_pri(struct task_struct *task);
 
 extern long get_obfuscation(struct task_struct *task, int type, long original);
-
-extern long pri_task_statm(struct task_struct *task, struct mm_struct *mm, long *pri_shared, long *pri_text, long *pri_data, long *pri_resident);
 #endif
