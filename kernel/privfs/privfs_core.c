@@ -44,7 +44,7 @@ void buff_refill(unsigned long pid)
 	task = pid_task(find_vpid(pid), PIDTYPE_PID);
 	buf = &((task->rbuff).rbuff);
 	while((buf->in - buf->out) < PRI_BUFFER_SIZE){
-		noise = get_laplace(0, 20);
+		noise = get_laplace(0, 200);
 		__kfifo_in(buf, &noise, 1);
 		printk(KERN_INFO "Generated Noise: %ld\n", noise);
 	}	
@@ -52,9 +52,14 @@ void buff_refill(unsigned long pid)
 
 static inline void rbuffer_alloc(struct task_struct *task)
 {
+	long noise;
 	struct pri_rbuff *buff = &(task->rbuff);
 	__kfifo_alloc(&(buff->rbuff), PRI_BUFFER_SIZE, 8, GFP_KERNEL);
-	__kfifo_in(&(buff->rbuff), random_buf, 64);	
+//	__kfifo_in(&(buff->rbuff), random_buf, 64);	
+	while(((buff->rbuff).in - (buff->rbuff).out) < PRI_BUFFER_SIZE){
+		noise = get_laplace(0, 200);
+		__kfifo_in(&(buff->rbuff), &noise, 1);
+	}
 	buff->buff_task = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
 	tasklet_init(buff->buff_task, buff_refill, task->pid);
 }	

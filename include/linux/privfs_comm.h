@@ -2,6 +2,8 @@
 #define __PRIVFS_COMM_H_
 extern long * statm_get_optimization(long *arr);
 extern void pri_task_statm(struct task_struct *task, struct mm_struct *mm, long *noisy, long *optimal);
+extern void pri_task_statm_noisy(struct task_struct *task, struct mm_struct *mm, long *noisy);
+extern void pri_task_statm_optimal(struct task_struct *task, struct mm_struct *mm, long *optimal);
 
 #define NETLINK_PRIVFS 31
 #define MSG_BUFF_SIZE 10

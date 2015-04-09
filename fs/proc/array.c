@@ -577,14 +577,10 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
-	long noisy[5]; // size, resident, shared, text, data
-	long opt[5];
-	long pri_size = 0, pri_shared = 0, pri_text = 0, pri_data = 0, pri_resident = 0; 
 	struct mm_struct *mm = get_task_mm(task);
 
 	if (mm) {
 		size = task_statm(mm, &shared, &text, &data, &resident);
-		pri_task_statm(task, mm, noisy, opt); //x_x
 		mmput(mm);
 	}
 //	printk(KERN_INFO "proc_pid_statm\n");
@@ -603,6 +599,20 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_putc(m, '\n');
 
+	return 0;
+}
+
+int proc_pid_statm_noisy(struct seq_file *m, struct pid_namespace *ns,
+			struct pid *pid, struct task_struct *task)
+{
+	long noisy[5]; // size, resident, shared, text, data
+	struct mm_struct *mm = get_task_mm(task);
+
+	if (mm) {
+		pri_task_statm_noisy(task, mm, noisy); //x_x
+		mmput(mm);
+	}
+	
 	//noisy
 	seq_put_decimal_ll(m, 0, noisy[0]);
 	seq_put_decimal_ll(m, ' ', noisy[1]);
@@ -613,6 +623,20 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ll(m, ' ', 0);
 	seq_putc(m, '\n');
 
+	return 0;
+}
+
+int proc_pid_statm_optimal(struct seq_file *m, struct pid_namespace *ns,
+			struct pid *pid, struct task_struct *task)
+{
+	long opt[5]; // size, resident, shared, text, data
+	struct mm_struct *mm = get_task_mm(task);
+
+	if (mm) {
+		pri_task_statm_optimal(task, mm, opt); //x_x
+		mmput(mm);
+	}
+
 	//optimal
 	seq_put_decimal_ll(m, 0, opt[0]);
 	seq_put_decimal_ll(m, ' ', opt[1]);
@@ -622,7 +646,41 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ll(m, ' ', opt[4]);
 	seq_put_decimal_ll(m, ' ', 0);
 	seq_putc(m, '\n');
+
+	return 0;
+}
+
+int privfs_mm_struct(struct seq_file *m, struct pid_namespace *ns, 
+		struct pid *pid, struct task_struct *task)
+{
+	unsigned long data[11]; // value in mm_struct
+	struct mm_struct *mm = get_task_mm(task);
 	
+	data[0] = mm->hiwater_rss;
+	data[1] = mm->hiwater_vm;
+	data[2] = mm->total_vm;
+	data[3] = mm->locked_vm;
+	data[4] = mm->pinned_vm;
+	data[5] = mm->shared_vm;
+	data[6] = mm->exec_vm;
+	data[7] = mm->stack_vm;
+	data[8] = get_mm_counter(mm, MM_FILEPAGES);
+	data[9] = get_mm_counter(mm, MM_ANONPAGES); 
+	data[10] = get_mm_counter(mm, MM_SWAPENTS);
+	
+	seq_put_decimal_ull(m, 0, data[0]);
+	seq_put_decimal_ull(m, ' ', data[1]);
+	seq_put_decimal_ull(m, ' ', data[2]);
+	seq_put_decimal_ull(m, ' ', data[3]);
+	seq_put_decimal_ull(m, ' ', data[4]);
+	seq_put_decimal_ull(m, ' ', data[5]);
+	seq_put_decimal_ull(m, ' ', data[6]);
+	seq_put_decimal_ull(m, ' ', data[7]);
+	seq_put_decimal_ull(m, ' ', data[8]);
+	seq_put_decimal_ull(m, ' ', data[9]);
+	seq_put_decimal_ull(m, ' ', data[10]);
+	seq_putc(m, '\n');
+
 	return 0;
 }
 

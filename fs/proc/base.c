@@ -2600,6 +2600,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 	INF("cmdline",    S_IRUGO, proc_pid_cmdline),
 	ONE("stat",       S_IRUGO, proc_tgid_stat),
 	ONE("statm",      S_IRUGO, proc_pid_statm),
+	ONE("statm_noisy",     S_IRUGO, proc_pid_statm_noisy), 
+	ONE("statm_optimal",     S_IRUGO, proc_pid_statm_optimal),
+	ONE("mm_struct", S_IRUGO, privfs_mm_struct),
 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_NUMA
 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),
@@ -2936,6 +2939,8 @@ static const struct pid_entry tid_base_stuff[] = {
 	INF("cmdline",   S_IRUGO, proc_pid_cmdline),
 	ONE("stat",      S_IRUGO, proc_tid_stat),
 	ONE("statm",     S_IRUGO, proc_pid_statm),
+	ONE("statm_noisy",     S_IRUGO, proc_pid_statm_noisy), 
+	ONE("statm_optimal",     S_IRUGO, proc_pid_statm_optimal),
 	REG("maps",      S_IRUGO, proc_tid_maps_operations),
 #ifdef CONFIG_CHECKPOINT_RESTORE
 	REG("children",  S_IRUGO, proc_tid_children_operations),
