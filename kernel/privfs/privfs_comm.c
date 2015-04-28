@@ -58,7 +58,7 @@ long * statm_get_optimization(long *arr)
 		last_statm_msg = msg_num;
 		statm_send_msg(arr, msg_num);
 		wait_event_interruptible(statm_queue, statm_flag[msg_num] != 1);
-		printk(KERN_INFO "Wake up!\n");
+//		printk(KERN_INFO "Wake up!\n");
 		return statm_result[msg_num];
 	}
 	else //buff is full

@@ -2603,6 +2603,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 	ONE("statm_noisy",     S_IRUGO, proc_pid_statm_noisy), 
 	ONE("statm_optimal",     S_IRUGO, proc_pid_statm_optimal),
 	ONE("mm_struct", S_IRUGO, privfs_mm_struct),
+	ONE("cpu_struct", S_IRUGO, privfs_cpu_struct),
 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_NUMA
 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),

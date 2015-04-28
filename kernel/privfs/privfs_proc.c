@@ -54,13 +54,16 @@ void pri_task_statm_optimal(struct task_struct *task, struct mm_struct *mm, long
 	long data[STATM_LEN];
 	long *opt; //optimization result
 
+	printk(KERN_INFO "Start obfuscating...\n");
 	data[STATM_FILE] = get_obfuscation(task, STATM_FILE, get_mm_counter(mm, MM_FILEPAGES));
 	data[STATM_ANON] = get_obfuscation(task, STATM_ANON, get_mm_counter(mm, MM_ANONPAGES));
 	data[STATM_TOTAL] = get_obfuscation(task, STATM_TOTAL, mm->total_vm);
 	data[STATM_SHARED] = get_obfuscation(task, STATM_SHARED, mm->shared_vm);
 	
+	printk(KERN_INFO "Wait for optimiation..\n");
 	opt = statm_get_optimization(data);		
 
+	printk(KERN_INFO "Get optimal results.\n");
 	optimal[0] = opt[STATM_TOTAL];
 	optimal[1] = opt[STATM_FILE] + opt[STATM_ANON];
 	optimal[2] = opt[STATM_FILE];

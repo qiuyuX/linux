@@ -39,14 +39,17 @@ void buff_refill(unsigned long pid)
 {
 	struct task_struct *task;
 	struct __kfifo *buf;
+	struct pri_rbuff *p_rbuff;
 	long noise;
+
 	printk(KERN_INFO "Refill random buffer for %lu\n", pid);
 	task = pid_task(find_vpid(pid), PIDTYPE_PID);
-	buf = &((task->rbuff).rbuff);
+	p_rbuff = &(task->rbuff);
+	buf = &(p_rbuff->rbuff);
 	while((buf->in - buf->out) < PRI_BUFFER_SIZE){
-		noise = get_laplace(0, 200);
+		noise = get_laplace(0, 200 * (p_rbuff->height));
 		__kfifo_in(buf, &noise, 1);
-		printk(KERN_INFO "Generated Noise: %ld\n", noise);
+//		printk(KERN_INFO "Generated Noise: %ld\n", noise);
 	}	
 }
 
@@ -56,10 +59,10 @@ static inline void rbuffer_alloc(struct task_struct *task)
 	struct pri_rbuff *buff = &(task->rbuff);
 	__kfifo_alloc(&(buff->rbuff), PRI_BUFFER_SIZE, 8, GFP_KERNEL);
 //	__kfifo_in(&(buff->rbuff), random_buf, 64);	
-	while(((buff->rbuff).in - (buff->rbuff).out) < PRI_BUFFER_SIZE){
-		noise = get_laplace(0, 200);
-		__kfifo_in(&(buff->rbuff), &noise, 1);
-	}
+//	while(((buff->rbuff).in - (buff->rbuff).out) < PRI_BUFFER_SIZE){
+//		noise = get_laplace(0, 200);
+//		__kfifo_in(&(buff->rbuff), &noise, 1);
+//	}
 	buff->buff_task = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
 	tasklet_init(buff->buff_task, buff_refill, task->pid);
 }	
@@ -75,6 +78,7 @@ static void init_pri_struct(struct task_struct *task, int type){
 	struct pri_struct *p = &(task->pri[type]);	
 	p->index = 0;
 	p->pri_current = 0;
+	p->base_value = 0;
 	memset(p->original, 0, MAX_QUERY_LENGTH * 8);
 	memset(p->obfuscated, 0, MAX_QUERY_LENGTH * 8);
 	p->p_rbuff = &(task->rbuff);
@@ -112,8 +116,17 @@ static long get_noise(struct pri_struct *pri)
 	long noise;
 	int length;
 	struct pri_rbuff *p_rbuff = pri->p_rbuff;
-	if(__kfifo_out(&(p_rbuff->rbuff), &noise, 1) != 0){
-		length = (p_rbuff->rbuff).in - (p_rbuff->rbuff).out;
+	struct __kfifo *buf = &(p_rbuff->rbuff);
+
+	if(buf->in == buf->out){
+		while((buf->in - buf->out) < PRI_BUFFER_SIZE){
+			noise = get_laplace(0, 200 * (p_rbuff->height));
+			__kfifo_in(buf, &noise, 1);
+		}	
+	}
+
+	if(__kfifo_out(buf, &noise, 1) != 0){
+		length = buf->in - buf->out;
 		if(length == (PRI_BUFFER_SIZE/2)){
 			tasklet_hi_schedule(p_rbuff->buff_task);
 		}
@@ -125,17 +138,14 @@ static long get_noise(struct pri_struct *pri)
 	}
 }
 
-long get_obfuscation(struct task_struct *task, int type, long ori)
+long call_binary_tree(struct pri_struct *pri, unsigned int b_index, long ori)
 {
-	struct pri_struct *pri;
-	pri = &(task->pri[type]);
-	pri->index += 1;
 	int i;
 	int j = 1;
 	int mark = 0; 
 	long noisy_sum = 0;
 	for(i = 0; i< MAX_QUERY_LENGTH; i++){
-		if((j & pri->index) != 0){
+		if((j & b_index) != 0){
 		/* find the first right bit which is not 0*/
 			if(mark == 0){
 				mark = 1;
@@ -145,8 +155,56 @@ long get_obfuscation(struct task_struct *task, int type, long ori)
 			}
 			else noisy_sum += pri->obfuscated[i];
 		}
-		j = j<<1;
+		j = j << 1;
 	}
 //	printk(KERN_INFO "Noisy Sum: %ld\n", noisy_sum);
 	return noisy_sum;
 }
+
+int is_base(unsigned int index)
+{
+	int height = -1;
+	int j = 1;
+	int i;
+
+	for(i = 0; i < sizeof(unsigned int) * 8; i++){
+		if(j & index){
+			if(height == -1) height = i + 1;
+			else return -1;
+		}
+		j = j << 1;
+	}
+
+	return height;
+}
+
+long get_obfuscation(struct task_struct *task, int type, long ori)
+{
+	struct pri_struct *pri;
+	int height;
+	long result;
+
+	pri = &(task->pri[type]);
+	pri->index += 1;
+	height = is_base(pri->index);
+
+	if(height != -1){
+//		printk(KERN_INFO "New tree in height %d!\n", height);
+		pri->base_index = pri->index;
+		pri->base_noisy += ori - pri->base_value + get_laplace(0, 100);
+		pri->base_value = ori;
+		pri->pri_current = 0;
+		if(pri->p_rbuff->height != height){
+			(pri->p_rbuff->rbuff).out = (pri->p_rbuff->rbuff).in; // reset buffer
+			pri->p_rbuff->height = height;
+		}
+		result = pri->base_noisy;
+	}
+	else{
+		result = call_binary_tree(pri, pri->index - pri->base_index, ori - pri->base_value);
+		result += pri->base_noisy;
+	}
+
+	return result;
+}
+

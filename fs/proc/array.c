@@ -653,7 +653,7 @@ int proc_pid_statm_optimal(struct seq_file *m, struct pid_namespace *ns,
 int privfs_mm_struct(struct seq_file *m, struct pid_namespace *ns, 
 		struct pid *pid, struct task_struct *task)
 {
-	unsigned long data[11]; // value in mm_struct
+	unsigned long data[21]; // value in mm_struct
 	struct mm_struct *mm = get_task_mm(task);
 	
 	data[0] = mm->hiwater_rss;
@@ -664,9 +664,10 @@ int privfs_mm_struct(struct seq_file *m, struct pid_namespace *ns,
 	data[5] = mm->shared_vm;
 	data[6] = mm->exec_vm;
 	data[7] = mm->stack_vm;
-	data[8] = get_mm_counter(mm, MM_FILEPAGES);
-	data[9] = get_mm_counter(mm, MM_ANONPAGES); 
-	data[10] = get_mm_counter(mm, MM_SWAPENTS);
+	data[8] = atomic_long_read(&mm->nr_ptes);
+	data[9] = get_mm_counter(mm, MM_FILEPAGES);
+	data[10] = get_mm_counter(mm, MM_ANONPAGES); 
+	data[11] = get_mm_counter(mm, MM_SWAPENTS);
 	
 	seq_put_decimal_ull(m, 0, data[0]);
 	seq_put_decimal_ull(m, ' ', data[1]);
@@ -679,6 +680,78 @@ int privfs_mm_struct(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', data[8]);
 	seq_put_decimal_ull(m, ' ', data[9]);
 	seq_put_decimal_ull(m, ' ', data[10]);
+	seq_put_decimal_ull(m, ' ', data[11]);
+	seq_putc(m, '\n');
+
+	return 0;
+}
+
+int privfs_cpu_struct(struct seq_file *m, struct pid_namespace *ns, 
+		struct pid *pid, struct task_struct *task)
+{
+	/*
+	 * uptime 
+	 * starttime
+	 * utime
+	 * stime
+	 * gtime
+	 * cutime
+	 * cstime
+	 * cgtime
+	 * nvcsw
+	 * nivcsw
+	 * eip
+	 * esp 
+	 *
+	 */
+	struct signal_struct *sig = task->signal;
+	struct timespec up;
+	int permitted;
+	permitted = ptrace_may_access(task, PTRACE_MODE_READ | PTRACE_MODE_NOAUDIT);
+
+	unsigned long long start_time;
+	unsigned long long up_time;
+	cputime_t utime, stime, gtime, cutime, cstime, cgtime;
+	unsigned long eip, esp;
+	unsigned long nvcsw, nivcsw;
+
+	cutime = cstime = cgtime = utime = stime = gtime = 0;
+	eip = esp = 0;
+
+	start_time = (unsigned long long) task->real_start_time.tv_sec * NSEC_PER_SEC + task->real_start_time.tv_nsec;
+	start_time = nsec_to_clock_t(start_time);
+
+	get_monotonic_boottime(&up);
+	up_time = (unsigned long long) up.tv_sec * NSEC_PER_SEC + up.tv_nsec;
+	up_time = nsec_to_clock_t(up_time);
+
+	cutime = sig->cutime;
+	cstime = sig->cstime;
+	cgtime = sig->cgtime;
+
+	task_cputime_adjusted(task, &utime, &stime);
+	gtime = task_gtime(task);
+
+	if (permitted) {
+		eip = KSTK_EIP(task);
+		esp = KSTK_ESP(task);
+	}
+
+	nvcsw = task->nvcsw;
+	nivcsw = task->nivcsw;
+
+	seq_put_decimal_ull(m, 0, up_time); 
+	seq_put_decimal_ull(m, ' ', start_time); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(utime)); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(stime)); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(gtime)); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cutime)); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cstime)); 
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cgtime)); 
+	seq_put_decimal_ull(m, ' ', nvcsw); 
+	seq_put_decimal_ull(m, ' ', nivcsw); 
+	seq_put_decimal_ull(m, ' ', eip); 
+	seq_put_decimal_ull(m, ' ', esp); 
 	seq_putc(m, '\n');
 
 	return 0;

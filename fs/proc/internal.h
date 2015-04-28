@@ -161,6 +161,8 @@ extern int proc_pid_statm_optimal(struct seq_file *, struct pid_namespace *,
 			struct pid *, struct task_struct *);
 extern int privfs_mm_struct(struct seq_file *, struct pid_namespace *, 
 		struct pid *, struct task_struct *);
+extern int privfs_cpu_struct(struct seq_file *, struct pid_namespace *, 
+		struct pid *, struct task_struct *);
 
 /*
  * base.c

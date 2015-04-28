@@ -24,9 +24,10 @@
 
 struct task_struct;
 
-struct pri_rbuff{ // store the random laplace noise
+struct pri_rbuff{ // store the random laplace noise for binary tree
 	struct __kfifo rbuff;
 	struct tasklet_struct *buff_task;	
+	int height; // height of the current binary tree
 };
 
 struct pri_struct{ // for drs field in statm
@@ -35,6 +36,9 @@ struct pri_struct{ // for drs field in statm
 	unsigned int index; // the ith query
 	long pri_current; // previous value
 	struct pri_rbuff *p_rbuff;
+	long base_value;
+	long base_noisy;
+	int base_index;
 };
 
 extern void initialize_pri(struct task_struct *task);
