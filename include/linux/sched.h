@@ -1459,7 +1459,7 @@ struct task_struct {
 	 * data related with privfs.x_x
 	 */
 	struct pri_struct pri[PRI_SIZE];
-	struct pri_rbuff rbuff;
+//	struct pri_rbuff rbuff;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */

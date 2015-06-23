@@ -32,7 +32,7 @@ float get_fast_laplace(float u, float b)
 	float result;
 	float e = 0;
 	unsigned int ran;
-	kernel_fpu_begin();
+//	kernel_fpu_begin();
 	while(e == 0){
 		get_random_bytes(&ran, sizeof(unsigned int));
 		e = (float)ran / max;
@@ -47,7 +47,7 @@ float get_fast_laplace(float u, float b)
 	else{
 		result = u + b * fastlog(1 + 2 * e);
 	}
-	kernel_fpu_end();
+//	kernel_fpu_end();
 	return result;
 }
 EXPORT_SYMBOL(get_fast_laplace);

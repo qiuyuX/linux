@@ -2599,6 +2599,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 #endif
 	INF("cmdline",    S_IRUGO, proc_pid_cmdline),
 	ONE("stat",       S_IRUGO, proc_tgid_stat),
+	ONE("stat_optimal",       S_IRUGO, privfs_proc_tgid_stat),
 	ONE("statm",      S_IRUGO, proc_pid_statm),
 	ONE("statm_noisy",     S_IRUGO, proc_pid_statm_noisy), 
 	ONE("statm_optimal",     S_IRUGO, proc_pid_statm_optimal),
@@ -2939,6 +2940,7 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 	INF("cmdline",   S_IRUGO, proc_pid_cmdline),
 	ONE("stat",      S_IRUGO, proc_tid_stat),
+	ONE("stat_optimal",      S_IRUGO, privfs_proc_tid_stat),
 	ONE("statm",     S_IRUGO, proc_pid_statm),
 	ONE("statm_noisy",     S_IRUGO, proc_pid_statm_noisy), 
 	ONE("statm_optimal",     S_IRUGO, proc_pid_statm_optimal),

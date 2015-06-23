@@ -151,6 +151,10 @@ extern int proc_tid_stat(struct seq_file *, struct pid_namespace *,
 			 struct pid *, struct task_struct *);
 extern int proc_tgid_stat(struct seq_file *, struct pid_namespace *,
 			  struct pid *, struct task_struct *);
+extern int privfs_proc_tid_stat(struct seq_file *, struct pid_namespace *,
+			 struct pid *, struct task_struct *); // x_x
+extern int privfs_proc_tgid_stat(struct seq_file *, struct pid_namespace *,
+			  struct pid *, struct task_struct *); // x_x
 extern int proc_pid_status(struct seq_file *, struct pid_namespace *,
 			   struct pid *, struct task_struct *);
 extern int proc_pid_statm(struct seq_file *, struct pid_namespace *,

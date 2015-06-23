@@ -561,6 +561,193 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 	return 0;
 }
 
+static int privfs_do_task_stat(struct seq_file *m, struct pid_namespace *ns,
+			struct pid *pid, struct task_struct *task, int whole)
+{
+	unsigned long vsize, eip, esp, wchan = ~0UL;
+	int priority, nice;
+	int tty_pgrp = -1, tty_nr = 0;
+	sigset_t sigign, sigcatch;
+	char state;
+	pid_t ppid = 0, pgid = -1, sid = -1;
+	int num_threads = 0;
+	int permitted;
+	struct mm_struct *mm;
+	unsigned long long start_time;
+	unsigned long long up_time; // x_x
+	struct timespec up;
+	unsigned long cmin_flt = 0, cmaj_flt = 0;
+	unsigned long  min_flt = 0,  maj_flt = 0;
+	cputime_t cutime, cstime, utime, stime;
+	cputime_t cgtime, gtime;
+	unsigned long utime_opt, stime_opt; // x_x
+	unsigned long rsslim = 0;
+	char tcomm[sizeof(task->comm)];
+	unsigned long flags;
+
+	state = *get_task_state(task);
+	vsize = eip = esp = 0;
+	permitted = ptrace_may_access(task, PTRACE_MODE_READ | PTRACE_MODE_NOAUDIT);
+	mm = get_task_mm(task);
+	if (mm) {
+		vsize = task_vsize(mm);
+		if (permitted) {
+			eip = KSTK_EIP(task);
+			esp = KSTK_ESP(task);
+		}
+	}
+
+	get_task_comm(tcomm, task);
+
+	sigemptyset(&sigign);
+	sigemptyset(&sigcatch);
+	cutime = cstime = utime = stime = 0;
+	cgtime = gtime = 0;
+
+	if (lock_task_sighand(task, &flags)) {
+		struct signal_struct *sig = task->signal;
+
+		if (sig->tty) {
+			struct pid *pgrp = tty_get_pgrp(sig->tty);
+			tty_pgrp = pid_nr_ns(pgrp, ns);
+			put_pid(pgrp);
+			tty_nr = new_encode_dev(tty_devnum(sig->tty));
+		}
+
+		num_threads = get_nr_threads(task);
+		collect_sigign_sigcatch(task, &sigign, &sigcatch);
+
+		cmin_flt = sig->cmin_flt;
+		cmaj_flt = sig->cmaj_flt;
+		cutime = sig->cutime;
+		cstime = sig->cstime;
+		cgtime = sig->cgtime;
+		rsslim = ACCESS_ONCE(sig->rlim[RLIMIT_RSS].rlim_cur);
+
+		/* add up live thread stats at the group level */
+		if (whole) {
+			struct task_struct *t = task;
+			do {
+				min_flt += t->min_flt;
+				maj_flt += t->maj_flt;
+				gtime += task_gtime(t);
+				t = next_thread(t);
+			} while (t != task);
+
+			min_flt += sig->min_flt;
+			maj_flt += sig->maj_flt;
+			thread_group_cputime_adjusted(task, &utime, &stime);
+			gtime += sig->gtime;
+		}
+
+		sid = task_session_nr_ns(task, ns);
+		ppid = task_tgid_nr_ns(task->real_parent, ns);
+		pgid = task_pgrp_nr_ns(task, ns);
+
+		unlock_task_sighand(task, &flags);
+	}
+
+	if (permitted && (!whole || num_threads < 2))
+		wchan = get_wchan(task);
+	if (!whole) {
+		min_flt = task->min_flt;
+		maj_flt = task->maj_flt;
+		task_cputime_adjusted(task, &utime, &stime);
+		gtime = task_gtime(task);
+	}
+
+	/* scale priority and nice values from timeslices to -20..20 */
+	/* to make it look like a "normal" Unix priority/nice value  */
+	priority = task_prio(task);
+	nice = task_nice(task);
+
+	/* Temporary variable needed for gcc-2.96 */
+	/* convert timespec -> nsec*/
+	start_time =
+		(unsigned long long)task->real_start_time.tv_sec * NSEC_PER_SEC
+				+ task->real_start_time.tv_nsec;
+	/* convert nsec -> ticks */
+	start_time = nsec_to_clock_t(start_time);
+	/* uptime x_x */	
+	get_monotonic_boottime(&up);
+	up_time = (unsigned long long) up.tv_sec * NSEC_PER_SEC + up.tv_nsec;
+	up_time = nsec_to_clock_t(up_time);
+
+	/* get noised x_x */
+	pri_task_cpu_optimal(task, cputime_to_clock_t(utime), cputime_to_clock_t(stime), up_time, start_time, cputime_to_clock_t(gtime), cputime_to_clock_t(cutime), cputime_to_clock_t(cstime), &utime_opt, &stime_opt);
+
+
+	seq_printf(m, "%d (%s) %c", pid_nr_ns(pid, ns), tcomm, state);
+	seq_put_decimal_ll(m, ' ', ppid);
+	seq_put_decimal_ll(m, ' ', pgid);
+	seq_put_decimal_ll(m, ' ', sid);
+	seq_put_decimal_ll(m, ' ', tty_nr);
+	seq_put_decimal_ll(m, ' ', tty_pgrp);
+	seq_put_decimal_ull(m, ' ', task->flags);
+	seq_put_decimal_ull(m, ' ', min_flt);
+	seq_put_decimal_ull(m, ' ', cmin_flt);
+	seq_put_decimal_ull(m, ' ', maj_flt);
+	seq_put_decimal_ull(m, ' ', cmaj_flt);
+//	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(utime));
+//	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(stime));
+	seq_put_decimal_ull(m, ' ', utime_opt);
+	seq_put_decimal_ull(m, ' ', stime_opt);
+	seq_put_decimal_ll(m, ' ', cputime_to_clock_t(cutime));
+	seq_put_decimal_ll(m, ' ', cputime_to_clock_t(cstime));
+	seq_put_decimal_ll(m, ' ', priority);
+	seq_put_decimal_ll(m, ' ', nice);
+	seq_put_decimal_ll(m, ' ', num_threads);
+	seq_put_decimal_ull(m, ' ', 0);
+	seq_put_decimal_ull(m, ' ', start_time);
+	seq_put_decimal_ull(m, ' ', vsize);
+	seq_put_decimal_ull(m, ' ', mm ? get_mm_rss(mm) : 0);
+	seq_put_decimal_ull(m, ' ', rsslim);
+	seq_put_decimal_ull(m, ' ', mm ? (permitted ? mm->start_code : 1) : 0);
+	seq_put_decimal_ull(m, ' ', mm ? (permitted ? mm->end_code : 1) : 0);
+	seq_put_decimal_ull(m, ' ', (permitted && mm) ? mm->start_stack : 0);
+	seq_put_decimal_ull(m, ' ', esp);
+	seq_put_decimal_ull(m, ' ', eip);
+	/* The signal information here is obsolete.
+	 * It must be decimal for Linux 2.0 compatibility.
+	 * Use /proc/#/status for real-time signals.
+	 */
+	seq_put_decimal_ull(m, ' ', task->pending.signal.sig[0] & 0x7fffffffUL);
+	seq_put_decimal_ull(m, ' ', task->blocked.sig[0] & 0x7fffffffUL);
+	seq_put_decimal_ull(m, ' ', sigign.sig[0] & 0x7fffffffUL);
+	seq_put_decimal_ull(m, ' ', sigcatch.sig[0] & 0x7fffffffUL);
+	seq_put_decimal_ull(m, ' ', wchan);
+	seq_put_decimal_ull(m, ' ', 0);
+	seq_put_decimal_ull(m, ' ', 0);
+	seq_put_decimal_ll(m, ' ', task->exit_signal);
+	seq_put_decimal_ll(m, ' ', task_cpu(task));
+	seq_put_decimal_ull(m, ' ', task->rt_priority);
+	seq_put_decimal_ull(m, ' ', task->policy);
+	seq_put_decimal_ull(m, ' ', delayacct_blkio_ticks(task));
+	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(gtime));
+	seq_put_decimal_ll(m, ' ', cputime_to_clock_t(cgtime));
+
+	if (mm && permitted) {
+		seq_put_decimal_ull(m, ' ', mm->start_data);
+		seq_put_decimal_ull(m, ' ', mm->end_data);
+		seq_put_decimal_ull(m, ' ', mm->start_brk);
+		seq_put_decimal_ull(m, ' ', mm->arg_start);
+		seq_put_decimal_ull(m, ' ', mm->arg_end);
+		seq_put_decimal_ull(m, ' ', mm->env_start);
+		seq_put_decimal_ull(m, ' ', mm->env_end);
+	} else
+		seq_printf(m, " 0 0 0 0 0 0 0");
+
+	if (permitted)
+		seq_put_decimal_ll(m, ' ', task->exit_code);
+	else
+		seq_put_decimal_ll(m, ' ', 0);
+
+	seq_putc(m, '\n');
+	if (mm)
+		mmput(mm);
+	return 0;
+}
+
 int proc_tid_stat(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
@@ -571,6 +758,18 @@ int proc_tgid_stat(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
 	return do_task_stat(m, ns, pid, task, 1);
+}
+
+int privfs_proc_tid_stat(struct seq_file *m, struct pid_namespace *ns,
+			struct pid *pid, struct task_struct *task)
+{
+	return privfs_do_task_stat(m, ns, pid, task, 0);
+}
+
+int privfs_proc_tgid_stat(struct seq_file *m, struct pid_namespace *ns,
+			struct pid *pid, struct task_struct *task)
+{
+	return privfs_do_task_stat(m, ns, pid, task, 1);
 }
 
 int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
@@ -714,6 +913,7 @@ int privfs_cpu_struct(struct seq_file *m, struct pid_namespace *ns,
 	cputime_t utime, stime, gtime, cutime, cstime, cgtime;
 	unsigned long eip, esp;
 	unsigned long nvcsw, nivcsw;
+	long noisy_nvcsw;
 
 	cutime = cstime = cgtime = utime = stime = gtime = 0;
 	eip = esp = 0;
@@ -740,6 +940,8 @@ int privfs_cpu_struct(struct seq_file *m, struct pid_namespace *ns,
 	nvcsw = task->nvcsw;
 	nivcsw = task->nivcsw;
 
+	noisy_nvcsw = pri_cpu_switch(task, nvcsw);
+
 	seq_put_decimal_ull(m, 0, up_time); 
 	seq_put_decimal_ull(m, ' ', start_time); 
 	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(utime)); 
@@ -748,7 +950,7 @@ int privfs_cpu_struct(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cutime)); 
 	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cstime)); 
 	seq_put_decimal_ull(m, ' ', cputime_to_clock_t(cgtime)); 
-	seq_put_decimal_ull(m, ' ', nvcsw); 
+	seq_put_decimal_ull(m, ' ', (unsigned long)noisy_nvcsw); 
 	seq_put_decimal_ull(m, ' ', nivcsw); 
 	seq_put_decimal_ull(m, ' ', eip); 
 	seq_put_decimal_ull(m, ' ', esp); 
